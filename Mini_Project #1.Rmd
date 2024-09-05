@@ -1,0 +1,163 @@
+---
+title: "Mini Project #1 Section 2"
+author: "Bridget Manu"
+date: "2024-09-04"
+output: 
+   pdf_document:
+     latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+library(class) # knn
+
+```
+
+
+```{r}
+# read the train and test data into a dataframes
+train_data <- read.csv("C:\\Users\\Bridget Manu\\Downloads\\1-training_data.csv")
+test_data <- read.csv("C:\\Users\\Bridget Manu\\Downloads\\1-test_data.csv")
+```
+
+
+```{r}
+# creating a subset of training and test data
+train_d <- subset(train_data, select = c(x.1, x.2))
+test_d <- subset(test_data, select = c(x.1, x.2))
+
+```
+
+
+```{r}
+# apply knn to k=1 for baseline performance and debugging purposes
+
+# train data prediction
+set.seed(1)
+modtrain <- knn(train_d, train_d, train_data$y, k = 1)
+
+# contingency table of the prediction vs actual of train data
+table(modtrain, train_data$y)
+
+# Training error rate
+1 - mean(modtrain == train_data$y)
+
+# test data prediction
+set.seed(1)
+modtest <- knn(train_d, test_d, train_data$y, k = 1)
+
+x <- (740+781)*100/(740+219+260+781)
+
+print(paste("Percentage of observations correctly predicted:", x))
+
+# contingency table of the prediction vs actual of test data
+table(modtest, test_data$y)
+
+# Test error rate
+1 - mean(modtest == test_data$y)
+```
+
+```{r}
+# Applying KNN for k=1,..100
+
+# create a vector from 1-100
+k_values <- c(seq(from = 1, to = 100, by = 1))
+
+# set it to the length of k_values
+n_k_values <- length(k_values)
+
+# creates vector with 0's of length n_k_values
+train_err_rate <- numeric(length = n_k_values)
+
+# creates vector with 0's of length n_k_values
+test_err_rate <- numeric(length = n_k_values)
+
+# assigns the same values as k_values
+names(train_err_rate) <- names(test_err_rate) <- k_values
+
+```
+
+
+```{r}
+# fitting KNN for K=1,...100
+
+for (i in seq(along = k_values)) {
+  set.seed(1)
+  train_pred <- knn(train_d, train_d, train_data$y, k = k_values[i])
+  set.seed(1)
+  test_pred <- knn(train_d, test_d, train_data$y, k = k_values[i])
+  train_err_rate[i] <- 1 - sum(train_pred == train_data$y)/length(train_data$y)
+  test_err_rate[i] <- 1 - sum(test_pred == test_data$y)/length(test_data$y)
+}
+
+# plot the train error rate and the test error rates against k 
+
+plot(1/k_values, train_err_rate, xlab = "Number of nearest neighbors", 
+     ylab = "Error rate", 
+     type = "b", ylim = range(c(train_err_rate, test_err_rate)), 
+     col = "red", pch = 20)
+lines(1/k_values, test_err_rate, type="b", col="blue", pch = 20)
+legend("bottomright", lty = 1, col = c("red", "blue"), 
+       legend = c("training", "test"))
+
+
+# The test error rate follows the typical trend of a U shape while the training 
+# error rate displays a downward trend which is consistent with what 
+# I expected as learned in class.
+
+```
+
+```{r}
+# create a dataframe for the k values with train & test error rates
+result <- data.frame(k_values, train_err_rate, test_err_rate)
+
+# the optimal value of K? 
+Optimal_k <- result$k_values[which.min(result$test_err_rate)]
+print(paste("Optimal value of k is", Optimal_k))
+
+# the test error rate associated with the optimal K?
+Optimal_k_test <- result$test_err_rate[which(result$k_values==Optimal_k)]
+print(paste("test error rate associated with optimal k is", Optimal_k_test))
+
+# the training error rate associated with the optimal K?
+Optimal_k_train <- result$train_err_rate[which(result$k_values==Optimal_k)]
+print(paste("training error rate associated with optimal k is", Optimal_k_train))
+
+```
+### creating knn decision boundary using training data
+```{r}
+
+# creates a grid
+n.grid <- 50
+x1.grid <- seq(f = min(train_d[, 1]), t = max(train_d[, 1]), l = n.grid)
+x2.grid <- seq(f = min(train_d[, 2]), t = max(train_d[, 2]), l = n.grid)
+grid <- expand.grid(x1.grid, x2.grid)
+
+# Using KNN to classify the training data points
+k.opt <- 65
+set.seed(1)
+mod.opt <- knn(train_d, grid, train_data$y, k = k.opt, prob = T)
+# prob is voting fraction for winning class
+prob <- attr(mod.opt, "prob") 
+# now it is voting fraction for y == "yes"
+prob <- ifelse(mod.opt == "yes", prob, 1 - prob) 
+prob <- matrix(prob, n.grid, n.grid)
+
+# plotting the train data 
+plot(train_d, col = ifelse(train_data$y == "yes", "green", "red"))
+
+# Add the k-NN decision boundary
+contour(x1.grid, x2.grid, prob, levels = 0.5, labels = "", xlab = "", ylab = "", 
+        main = "", lwd = 2, add = T)
+
+
+# The decision boundary of the optimal K seems sensible because the 
+# boundary seems to separate the classes with minimal overlap and is smoother 
+# compared to the other k values i tested which shows that model is not 
+# overfitting 
+
+
+```
+
